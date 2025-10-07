@@ -1,0 +1,95 @@
+// Prisma schema pour NeoSync
+// Adapter selon besoins, voir readme pour le modèle complet
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String?
+  provider      String    @default("local")
+  name          String
+  profileImage  String?   // URL Cloudinary
+  phone         String?
+  role          Role      @default(USER)
+  isActive      Boolean   @default(true)
+  lastLogin     DateTime?
+  resetToken    String?
+  wooConfig     WooConfig?
+  products      Product[]
+  orders        Order[]
+  sessions      Session[]
+  notifications Notification[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model WooConfig {
+  id        String @id @default(uuid())
+  storeUrl  String
+  apiKey    String
+  apiSecret String
+  userId    String @unique
+  user      User   @relation(fields: [userId], references: [id])
+}
+
+model Product {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  price           Float
+  stock           Int
+  stockAlert      Int       @default(5)
+  sku             String?
+  category        String?
+  imageUrl        String?
+  syncedWithWoo   Boolean   @default(false)
+  notificationSent Boolean  @default(false)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Order {
+  id        String   @id @default(uuid())
+  wooId     String
+  status    String
+  total     Float
+  syncedAt  DateTime?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+// Historique des notifications envoyées (stock, commandes, etc.)
+model Notification {
+  id        String   @id @default(uuid())
+  type      String
+  message   String
+  sentAt    DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+// Sessions utilisateur (multi-device, audit, sécurité)
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  userAgent String?
+  ip        String?
+}
+
+enum Role {
+  USER
+  ADMIN
+}
