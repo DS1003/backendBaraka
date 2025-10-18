@@ -43,6 +43,9 @@ app.use('/woocommerce', wooRoutes);
 app.use('/woocommerce', wooProductRoutes);
 app.use('/orders', orderRoutes);
 app.use('/notifications', notificationRoutes);
+// Expose API-compatible paths for frontend proxy (Next.js rewrites expect /api/...)
+app.use('/api/orders', orderRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/cron', cronRoutes);
 app.use('/excel', excelRoutes);
 app.use('/api/dashboard', dashboardRoutes);

@@ -53,3 +53,16 @@ export async function getDashboardStats(req, res, next) {
     next(err);
   }
 }
+
+export async function getTopProducts(req, res, next) {
+  try {
+    const topProducts = await prisma.product.findMany({
+      orderBy: { sales_count: 'desc' },
+      take: 5,
+      select: { id: true, name: true, sales_count: true, stock_quantity: true, image: true }
+    })
+    res.json(topProducts)
+  } catch (err) {
+    next(err)
+  }
+}
