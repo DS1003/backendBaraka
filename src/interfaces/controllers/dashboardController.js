@@ -16,12 +16,22 @@ export async function getDashboardStats(req, res, next) {
     const lowStockProducts = await prisma.product.count({ where: { stock_quantity: { lt: 5 }, manage_stock: true } });
     // CA total (somme des commandes payées)
     const totalRevenue = await prisma.order.aggregate({ _sum: { total: true }, where: { status: 'completed' } });
-    // Top 5 produits par ventes
-    const topProducts = await prisma.product.findMany({
-      orderBy: { sales_count: 'desc' },
+    // Top 5 produits (fallback: derniers produits créés — champs de ventes non disponibles dans le schéma)
+    const topProductsRaw = await prisma.product.findMany({
+      orderBy: { createdAt: 'desc' },
       take: 5,
-      select: { id: true, name: true, sales_count: true, stock_quantity: true }
+      select: { id: true, name: true, price: true, stock: true, imageUrl: true }
     });
+    // Map to a stable shape expected by the frontend
+    const topProducts = topProductsRaw.map(p => ({
+      id: p.id,
+      name: p.name,
+      // sales and revenue not tracked in current schema; return sensible defaults
+      sales: 0,
+      revenue: 0,
+      stock_quantity: p.stock,
+      image: p.imageUrl || null
+    }))
     // Evolution des commandes sur 30 jours
     const ordersByDay = await prisma.$queryRaw`SELECT DATE("createdAt") as day, COUNT(*) as count FROM "Order" WHERE "createdAt" > NOW() - INTERVAL '30 days' GROUP BY day ORDER BY day ASC`;
     // Evolution du CA sur 30 jours
@@ -56,11 +66,19 @@ export async function getDashboardStats(req, res, next) {
 
 export async function getTopProducts(req, res, next) {
   try {
-    const topProducts = await prisma.product.findMany({
-      orderBy: { sales_count: 'desc' },
+    const topProductsRaw = await prisma.product.findMany({
+      orderBy: { createdAt: 'desc' },
       take: 5,
-      select: { id: true, name: true, sales_count: true, stock_quantity: true, image: true }
+      select: { id: true, name: true, price: true, stock: true, imageUrl: true }
     })
+    const topProducts = topProductsRaw.map(p => ({
+      id: p.id,
+      name: p.name,
+      sales: 0,
+      revenue: 0,
+      change: 0,
+      image: p.imageUrl || null,
+    }))
     res.json(topProducts)
   } catch (err) {
     next(err)

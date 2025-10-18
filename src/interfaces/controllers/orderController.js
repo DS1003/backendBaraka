@@ -20,6 +20,37 @@ export async function createOrder(req, res, next) {
   }
 }
 
+// Retourne une liste des commandes récentes (optionnel: ?limit=5)
+import prisma from '../../infrastructure/db/prismaClient.js';
+export async function getOrders(req, res, next) {
+  try {
+    const limit = Number(req.query.limit) || 10
+    const orders = await prisma.order.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      select: {
+        id: true,
+        total: true,
+        status: true,
+        createdAt: true,
+        user: { select: { name: true, profileImage: true } }
+      }
+    })
+    // Map to frontend shape (include customer name and avatar)
+    const mapped = orders.map(o => ({
+      id: o.id,
+      amount: o.total,
+      status: o.status,
+      time: o.createdAt,
+      customer: o.user?.name || 'Client',
+      avatar: o.user?.profileImage || undefined
+    }))
+    res.json(mapped)
+  } catch (err) {
+    next(err)
+  }
+}
+
 export async function getOrder(req, res, next) {
   try {
     const order = await getOrderUseCase.execute(req.params.id);
